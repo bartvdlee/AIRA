@@ -752,14 +752,49 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
 
 
 if __name__ == "__main__":
-    llm = init_llm()
+
+    # Small CLI environment for quickly testing the RAG
+
+    if ask_confirmation.closed('Do you want to use a custom LLM (default: Mistral Small) (y/n)?'):
+        llm = init_llm(get_available_models())
+        print('Successfully loaded the custom LLM.', end='\n\n')
+    else:
+        print('Using the default LLM.', end='\n\n')
+        llm = init_llm()
 
     graph = setup_RAG(llm)
     
     thread_id = "12345678"
 
-    result = graph.invoke({"question": "What human rights of the stakeholder 'The applicant' are affected by the following harms, limit your answer to only provide the most important rights: Imagine you are an applicant who receives an invitation for an interview for a job you applied for. You are initially excited, but as you review the job requirements, you realize that the AI system has incorrectly identified you as a suitable candidate. You lack the necessary skills and experience for the role, leading to frustration and confusion. This misidentification can harm your self-esteem, waste your time, and potentially damage your credibility if you proceed with the interview and your inadequacies become apparent."},
-                          config={"configurable": {"thread_id": thread_id}})
+    # result = graph.invoke({"question": "What human rights of the stakeholder 'The applicant' are affected by the following harms, limit your answer to only provide the most important rights: Imagine you are an applicant who receives an invitation for an interview for a job you applied for. You are initially excited, but as you review the job requirements, you realize that the AI system has incorrectly identified you as a suitable candidate. You lack the necessary skills and experience for the role, leading to frustration and confusion. This misidentification can harm your self-esteem, waste your time, and potentially damage your credibility if you proceed with the interview and your inadequacies become apparent."},
+    #                       config={"configurable": {"thread_id": thread_id}})
 
-    print(f'Context: {result["context"]}\n\n')
-    print(f'Answer: {result["answer"]}')
+    print("\n\n\n\n")
+    result1 = graph.invoke({"question" : input('Enter prompt: ')}, config={"configurable" : {"thread_id" : thread_id}})
+
+    print(f'Context: {result1["context"]}\n\n')
+    print(f'Answer: {result1["answer"]}')
+
+    print("\n\n\n\n")
+    result2 = graph.invoke({"question" : input('Enter prompt: ')}, config={"configurable" : {"thread_id" : thread_id}})
+
+    print(f'Context: {result2["context"]}\n\n')
+    print(f'Answer: {result2["answer"]}')
+
+    print("\n\n\n\n")
+    result3 = graph.invoke({"question" : input('Enter prompt: ')}, config={"configurable" : {"thread_id" : thread_id}})
+
+    print(f'Context: {result3["context"]}\n\n')
+    print(f'Answer: {result3["answer"]}')
+
+    print("\n\n\n\n")
+    result4 = graph.invoke({"question" : input('Enter prompt: ')}, config={"configurable" : {"thread_id" : thread_id}})
+
+    print(f'Context: {result4["context"]}\n\n')
+    print(f'Answer: {result4["answer"]}')
+
+    print("\n\n\n\n")
+    result5 = graph.invoke({"question" : input('Enter prompt: ')}, config={"configurable" : {"thread_id" : thread_id}})
+
+    print(f'Context: {result5["context"]}\n\n')
+    print(f'Answer: {result5["answer"]}')
