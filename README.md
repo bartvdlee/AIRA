@@ -1,14 +1,14 @@
-Automated Impact on Rights Assessment (AIRA)
+**Automated Impact on Rights Assessment (AIRA)**
 
 AIRA is a tool to (partially) automate a Fundamental Rights Impact Assessment (FRIA) as required by the EU AI Act (AIA).
 
 The tool assumes you have a LiteLLM instance running on http:localhost:4000 and have at least one LLM configured on LiteLLM.
 For setting up LiteLLM, please see: https://github.com/BerriAI/litellm
 
-Features:
+**Features:**
 
 
-Installation (Ubuntu 24.04):
+**Installation (Ubuntu 24.04):**
 Installation steps assume Python (3.12) and Git is installed on the system.
 
 Clone the repo:
