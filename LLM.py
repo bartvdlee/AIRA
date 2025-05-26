@@ -37,8 +37,7 @@ from langchain_openai import OpenAIEmbeddings
 import faiss # type: ignore
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
-from uuid import uuid4
-from langchain import hub
+from langchain.prompts import ChatPromptTemplate
 from langgraph.graph import START, StateGraph
 from typing_extensions import List, TypedDict
 from langgraph.graph.state import CompiledStateGraph
@@ -178,7 +177,7 @@ def load_vector_store(embedding_function: OpenAIEmbeddings, folder_path: str ="v
 
 
 @retry(wait=wait_random_exponential(multiplier=1, max=60))
-def process_batch(vector_store: FAISS, batch_docs: list[Document], batch_uuids: list[str]) -> FAISS:
+def process_batch(vector_store: FAISS, batch_docs: list[Document], batch_uuids: Optional[list[str]] = None) -> FAISS:
     """
     Process a batch of documents and add them to the vector store.
     This function is decorated with retry to handle transient errors.
@@ -192,10 +191,13 @@ def process_batch(vector_store: FAISS, batch_docs: list[Document], batch_uuids: 
     Raises:
         Exception: If the batch fails after multiple retries.
     """
-    return vector_store.add_documents(documents=batch_docs, uuids=batch_uuids) # type: ignore
+    if batch_uuids is None:
+        return vector_store.add_documents(documents=batch_docs) # type: ignore
+    else:
+        return vector_store.add_documents(documents=batch_docs, uuids=batch_uuids) # type: ignore
 
 
-async def add_documents(vector_store: FAISS, documents: list[Document], uuids: list[str]) -> None:
+async def add_documents(vector_store: FAISS, documents: list[Document], uuids: Optional[list[str]] = None) -> None:
     """
     Add documents to the vector store in batches to avoid payload size limits.
     Uses async.
@@ -222,13 +224,18 @@ async def add_documents(vector_store: FAISS, documents: list[Document], uuids: l
             
         batch_end = min(i + batch_size, len(documents))
         batch_docs = documents[i:batch_end]
-        batch_uuids = uuids[i:batch_end]
+        if not uuids is None:
+            batch_uuids: list[str] = uuids[i:batch_end]
         
         print(f"Adding document batch {batch_num}/{total_batches} to vector store...")
         
         try:
             # Call the synchronous function with retry
-            process_batch(vector_store, batch_docs, batch_uuids)
+            if uuids is None:
+                process_batch(vector_store, batch_docs)
+            else:
+                process_batch(vector_store, batch_docs, batch_uuids) # type: ignore
+
             processed_batches.add(batch_num)
         except Exception as e:
             print(f"Failed to add batch {batch_num} after multiple retries: {e}")
@@ -317,63 +324,65 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
             documents.append(doc)
         print("Successfully loaded the ECHR text.")
 
-        # Create documents with the ECHR data
+        # Get the number of documents loaded from the ECHR text for later use
+        documents_echr_len = len(documents)
+
+        # Add the ECHR dataset to the documents
+        case_no = 0
         for item in ds['train']: # type: ignore
-            # Combine the list of strings in 'facts' into a single string
-            facts: str = "\n\n".join(item['facts']) # type: ignore
-
-            # Get labels for the article violations
-            articles: list[str] = item['labels'] # type: ignore
-
-            labels: list[str] = []
-            if len(articles) > 0: # type: ignore
-                for article in articles: # type: ignore
-                    labels.append(f"Article {article} ({article_translation[article]})")
-            else:
-                labels.append("No articles violated")
-
-            labels_text: str = ", ".join(labels)
-
-            # Preserve the rationale structure by numbering the paragraphs
-            rationales: list[int] = item['silver_rationales'] # type: ignore
-            rationales_paragraphs: list[str] = [item['facts'][i] for i in rationales] # type: ignore
-            rationales_text: str = "\n\n".join(rationales_paragraphs)
-
-            # Structure the document
-            content = f"""
-            Case Facts:
-            {facts}
-
-            Violated Articles:
-            {labels_text}
-
-            Rationale:
-            {rationales_text}
             """
+            Creates Document objects for every case in the ECHR dataset.
+            Every fact in the case is a separate Document and contains metadata about the case.
+            The metadata includes the case no (does not represent real-world no), verdict, and whether fact was referenced by judge in verdict.
+            This way the labels and silver_rationales columns from the dataset are incorporated into the fact Documents.
+            Only the facts of the case will put into Documents.
+            """
+            # Increment the case number (does not represent real-world case number)
+            case_no += 1
 
-            # Append the document to the list
-            documents.append(Document(page_content=content))
+            # Create a comma-separated string of the violated articles for this case
+            verdict: str = ', '.join([f"Article {article} ({article_translation[article]})" if len(item['labels']) > 0 else "No articles violated" for article in item['labels']]) # type: ignore
+            
+            # Keep track of the list index of the facts to determine if the fact was referenced in the verdict
+            fact_index = 0
 
-        # Give information about the documents and subtract the number of pages in the ECHR text
-        print(f"Loaded {len(documents) - 34} documents from the ECHR dataset.")
+            for fact in item['facts']: # type: ignore
+                # Create a Document object for every fact in the case and include metadata about the case
+                documents.append(Document(page_content=fact, metadata={ # type: ignore
+                    "case_no": case_no,
+                    "verdict": verdict,
+                    "fact_is_referenced_in_verdict": True if fact_index in item['silver_rationales'] else False # type: ignore
+                }))
+
+                # Increment the fact index
+                fact_index += 1
+
+        # Print the number of documents loaded from the ECHR dataset minus the ECHR text
+        print(f"Loaded {len(documents) - documents_echr_len} documents from the ECHR dataset.")
 
         # Create vector store
         index = faiss.IndexFlatL2(len(embeddings.embed_query("hello world")))
         vector_store = FAISS(embedding_function=embeddings, index=index, docstore=InMemoryDocstore(), index_to_docstore_id={})
 
-        # Create uuids for the documents
-        uuids = [str(uuid4()) for _ in range(len(documents))]
-
         # Add the documents to the vector store in batches to avoid payload size limits, use async and retry
-        asyncio.run(add_documents(vector_store, documents, uuids))
+        asyncio.run(add_documents(vector_store, documents))
 
         # Save the vector store to disk
         save_vector_store(vector_store)
     else:
         print("Using existing vector store.")
 
-    # Define prompt for the LLM
-    prompt = hub.pull("rlm/rag-prompt")
+    # Define the system prompt for the LLM
+    system_prompt = """
+    You are an expert in human rights law and the European Convention on Human Rights (ECHR).
+    Use the following pieces of retrieved context to answer the question.
+    The context is about the ECHR and its articles, as well as the case law of the ECHR.
+    Question: {question}
+    Context: {context}
+    Answer:    
+    """
+
+    prompt = ChatPromptTemplate.from_template(system_prompt)
 
     # Define state for application
     class State(TypedDict):
@@ -382,13 +391,89 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
         answer: str
 
     # Define application steps
-    def retrieve(state: State):
-        retrieved_docs = vector_store.similarity_search(state["question"]) # type: ignore
-        return {"context": retrieved_docs}
+    def retrieve(state: State): # type: ignore
+        retrieved_docs = vector_store.similarity_search(state["question"], k=10) # type: ignore
+
+        # Group documents by case number
+        cases = {}
+        for doc in retrieved_docs:
+            case_no = doc.metadata.get("case_no") # type: ignore
+
+            if case_no not in cases:
+                cases[case_no] = {
+                    'verdict' : doc.metadata.get("verdict", "No verdict available"), # type: ignore
+                    'facts': [],
+                    'referenced_facts': []
+                }
+            
+            # Seperate facts based on whether they were referenced in the verdict
+            if doc.metadata.get("fact_is_referenced_in_verdict", False): # type: ignore
+                cases[case_no]['referenced_facts'].append(doc) # type: ignore
+            else:
+                cases[case_no]['facts'].append(doc) # type: ignore
+        
+        # Prioritize referenced facts in the context
+        prioritized_docs = []
+        for case_no, case_data in cases.items(): # type: ignore
+            # Add referenced facts first
+            prioritized_docs.extend(case_data['referenced_facts']) # type: ignore
+            # Then add other facts
+            prioritized_docs.extend(case_data['facts']) # type: ignore
+        
+        return {"context": prioritized_docs} # type: ignore
+
 
     def generate(state: State): # type: ignore
-        docs_content = "\n\n".join(doc.page_content for doc in state["context"])
-        messages = prompt.invoke({"question": state["question"], "context": docs_content})
+        # Group context documents by case number for presentation
+        cases = {}
+        echr_docs = []
+
+        for doc in state["context"]:
+            case_no = doc.metadata.get("case_no") # type: ignore
+            if case_no is not None:
+                if case_no not in cases:
+                    cases[case_no] = {
+                        "verdict": doc.metadata.get("verdict", "No verdict available"), # type: ignore
+                        "facts": [],
+                        "referenced_facts": []
+                    }
+                
+                if doc.metadata.get("fact_is_referenced_in_verdict", False): # type: ignore
+                    cases[case_no]["referenced_facts"].append(doc) # type: ignore
+                else:
+                    cases[case_no]["facts"].append(doc) # type: ignore
+            else:
+                # If no case number, treat as ECHR document
+                echr_docs.append(doc) # type: ignore
+
+        structured_context = []
+
+        # Add ECHR treaty text first if available
+        if echr_docs:
+            structured_context.append("Relevant ECHR treaty provisions:") # type: ignore
+            structured_context.extend(echr_docs) # type: ignore
+
+        # Add cases with their verdicts and facts
+        if cases:
+            structured_context.append("\nRelevant ECHR case law:") # type: ignore
+            for case_no, case_data in cases.items(): # type: ignore
+                structured_context.append(f"\nCase {case_no} - Verdict: {case_data['verdict']}") # type: ignore
+
+                if case_data['referenced_facts']:
+                    structured_context.append("Key facts (referenced in judgment):") # type: ignore
+                    for fact in case_data["referenced_facts"]: # type: ignore
+                        structured_context.append(f"- {fact}") # type: ignore
+                    
+                if case_data['facts']:
+                    structured_context.append("Additional case Facts:") # type: ignore
+                    for fact in case_data["facts"]: # type: ignore
+                        structured_context.append(f"- {fact}") # type: ignore
+
+            # Add spacing between cases
+            structured_context.append("\n") # type: ignore
+
+        docs_content = "\n".join(structured_context) # type: ignore
+        messages = prompt.invoke({"question": state["question"], "context": docs_content}) # type: ignore
         response = llm.invoke(messages)
         return {"answer": response.content} # type: ignore
 
@@ -763,7 +848,11 @@ if __name__ == "__main__":
         llm = init_llm()
 
     graph = setup_RAG(llm)
-    
+
+    with open("rag_graph.png", "wb") as f:
+        f.write(graph.get_graph().draw_mermaid_png())
+    print("Graph image saved as rag_graph.png")
+
     thread_id = "12345678"
 
     # result = graph.invoke({"question": "What human rights of the stakeholder 'The applicant' are affected by the following harms, limit your answer to only provide the most important rights: Imagine you are an applicant who receives an invitation for an interview for a job you applied for. You are initially excited, but as you review the job requirements, you realize that the AI system has incorrectly identified you as a suitable candidate. You lack the necessary skills and experience for the role, leading to frustration and confusion. This misidentification can harm your self-esteem, waste your time, and potentially damage your credibility if you proceed with the interview and your inadequacies become apparent."},
