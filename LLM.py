@@ -128,7 +128,7 @@ def init_llm(model_name: str = 'mistral/mistral-small-latest') -> BaseChatModel:
     return llm
 
 
-def init_embeddings(model_name: str = 'gemini/gemini-embedding-exp-03-07') -> OpenAIEmbeddings:
+def init_embeddings(model_name: str = 'text-embedding-005') -> OpenAIEmbeddings:
     """
     Initializes the embeddings model specified by `model_name`. It uses liteLLM as backend.
     The function checks if the API key is already set in the environment variables.
@@ -211,7 +211,8 @@ async def add_documents(vector_store: FAISS, documents: list[Document], uuids: O
     Raises:
         Exception: If the batch fails after multiple retries.
     """
-    batch_size = 10
+    # Batch size can be changed according to the context size and rate limits of model used
+    batch_size = 25
     total_batches = (len(documents) - 1) // batch_size + 1
     processed_batches: set[int] = set()
 
@@ -849,9 +850,9 @@ if __name__ == "__main__":
 
     graph = setup_RAG(llm)
 
-    with open("rag_graph.png", "wb") as f:
-        f.write(graph.get_graph().draw_mermaid_png())
-    print("Graph image saved as rag_graph.png")
+    # with open("rag_graph.png", "wb") as f:
+    #     f.write(graph.get_graph().draw_mermaid_png())
+    # print("Graph image saved as rag_graph.png")
 
     thread_id = "12345678"
 
