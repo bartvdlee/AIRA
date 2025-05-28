@@ -44,7 +44,6 @@ from langgraph.graph.state import CompiledStateGraph
 from langchain_community.document_loaders import PyPDFLoader
 from tenacity import retry, wait_random_exponential
 import asyncio
-from langgraph.checkpoint.memory import MemorySaver
 
 # Local imports
 from LLM_functions import improve_scenario, generate_stakeholders, generate_vignettes, generate_harm, generate_human_rights_impact, generate_mitigation, generate_severity, generate_likelihood
@@ -256,9 +255,6 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
     Returns:
         CompiledStateGraph: The compiled state graph for the RAG system.
     """
-    # Setup memory
-    memory = MemorySaver()
-
     # Initialize the embeddings model
     embeddings = init_embeddings()
 
@@ -481,7 +477,7 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
     # Compile application and test
     graph_builder = StateGraph(State).add_sequence([retrieve, generate]) # type: ignore
     graph_builder.add_edge(START, "retrieve")
-    return graph_builder.compile(checkpointer=memory) # type: ignore
+    return graph_builder.compile() # type: ignore
 
 
 def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool = True, start_from: Optional[str] = None) -> None:
