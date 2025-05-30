@@ -38,9 +38,9 @@ def generate(harms: list[str], human_rights: list[list[str]], llm: BaseChatModel
     # Define the system message for the LLM
     system_message = SystemMessage(
         content="You are an expert in AI ethics and you are asked to evaluate the severity levels of certain harms within the context of certain human right. "
-                "Please evaluate the severity level for the given harm within the context of the given human right (enshrined in the universal declaration of human rights)."
-                "Assign the level of severity on a scale of low, medium, high or very high."
-                "Respond only with the severity level, without any additional text or explanation."
+                "Please evaluate the severity level for the given harm within the context of the given human right (enshrined in the European Convention on Human Rights)."
+                "Assign the level of severity on a scale from 0.0 to 1.0, where 0.0 means neglible impact, 0.2 means minor impact, 0.4 means moderate impact, 0.6 means significant discomfort, 0.8 means severe impact and 1.0 means life-altering or threatening impact."
+                "Generate the level of severity of impact of the harm based in this scale and justify your choice of level."
     )
     
     # Initialize an empty list to store the severity levels

@@ -83,8 +83,9 @@ def generate(harms: list[str], stakeholder: str, llm: BaseChatModel | CompiledSt
                                         Refrain from mentioning rights and freedoms of other stakeholders, but only focus on the
                                         rights and freedoms of {stakeholder}. Respond by giving a comma-seperated list of the affected rights for the harm.
                                         Provide the name of the right and the article number. Use the following format: Article [article number] ([article name]).
-                                        Also mention violated protocols, if applicable. Use the following format: Article P[protocol number]-[article number] ([protocol name]). 
-                                        Do not provide any additional text or explanation.""")
+                                        Also mention violated protocols, if applicable.""")
+                                        # Use the following format: Article P[protocol number]-[article number] ([protocol name]). 
+                                        # Do not provide any additional text or explanation.""")
         
             # Invoke the model with the message
             response = app.invoke(
@@ -112,7 +113,7 @@ def generate(harms: list[str], stakeholder: str, llm: BaseChatModel | CompiledSt
             # Invoke the model with the message
             response = app.invoke(
                 {"question": current_message},
-                config={"configurable": {"thread_id": thread_id}},
+                # config={"configurable": {"thread_id": thread_id}},
             )
 
             human_rights.append([item.strip() if not item.endswith('.') else item.strip()[:-1] for item in str(response['answer']).split(',')])
