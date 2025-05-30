@@ -512,7 +512,6 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
     - Stakeholder: The name of the stakeholder
     - Problematic Behaviour: The name of the problematic behaviour
     - Vignette: The vignette of the stakeholder
-    - Vignette of specified harm: The vignette of the specified harm
     - Harm: The harm of the stakeholder
     - Human Rights Impact: The human rights impact of the stakeholder
     - Mitigation Measures: The mitigation measures of the stakeholder
@@ -636,25 +635,16 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
         print('Generating vignettes...')
 
         vignettes: dict[str, list[str]] = {}
-        vignettes_of_harms: dict[str, list[str]] = {}
         for stakeholder in all_stakeholders:
-            vignette_list = generate_vignettes.generate(scenario, stakeholder, problematic_behaviours, llm)
-
-            vignettes[stakeholder] = [item['vignette'] for item in vignette_list]
-            vignettes_of_harms[stakeholder] = [item['vignette_of_harm'] for item in vignette_list]
+            vignettes[stakeholder] = generate_vignettes.generate(scenario, stakeholder, problematic_behaviours, llm)
 
         # Save the data using the DataManager
-        dm.save_data("vignettes", {
-            "vignettes": vignettes,
-            "vignettes_of_harms": vignettes_of_harms
-        })
+        dm.save_data("vignettes", vignettes)
 
         print('Successfully generated vignettes.')
     else:
         # Load from checkpoint
-        vignette_data = dm.load_data("vignettes")
-        vignettes = vignette_data["vignettes"]
-        vignettes_of_harms = vignette_data["vignettes_of_harms"]
+        vignettes = dm.load_data("vignettes")
         print('Successfully loaded vignettes from checkpoint.')
 
 
@@ -813,7 +803,6 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
 
             rows.append({
                 'Vignette': vignettes[stakeholder][j],
-                'Vignette of specified harm': vignettes_of_harms[stakeholder][j],
                 'Harm': harms[stakeholder][j],
                 'Human rights impact': padded_human_rights,
                 'Mitigation measures': padded_mitigation,
