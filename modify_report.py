@@ -222,17 +222,11 @@ def modify(report_name: str) -> None:
         chosen_stakeholder = choose_stakeholder_to_modify(dm)
 
         # Generate the vignettes
-        vignette_list_of_dict = generate_vignettes.generate(scenario, chosen_stakeholder, problematic_behaviours, llm)
-
-        vignettes: list[str] = []
-        vignettes_of_harms: list[str] = []
-        for dictionary in vignette_list_of_dict:
-            vignettes.append(dictionary['vignette'])
-            vignettes_of_harms.append(dictionary['vignette_of_harm'])
+        vignettes = generate_vignettes.generate(scenario, chosen_stakeholder, problematic_behaviours, llm)
 
         # Print the saved and new generated vignettes
         print('\nSaved generated vignettes:')
-        for i, vignette in enumerate(checkpoint_data['vignettes'][chosen_stakeholder], start=1):
+        for i, vignette in enumerate(checkpoint_data[chosen_stakeholder], start=1):
             print(f"{i}. {vignette}")
         print()
 
@@ -243,28 +237,10 @@ def modify(report_name: str) -> None:
 
         # Ask the user if they want to use the new generated vignettes
         if ask_confirmation.closed('Do you want to overwrite the saved vignettes with the newly generated vignettes (y/n)?'):
-            checkpoint_data['vignettes'][chosen_stakeholder] = vignettes
+            checkpoint_data[chosen_stakeholder] = vignettes
             print("Successfully updated the vignettes.")
         else:
             print("Keeping the original generated vignettes.")
-
-        # Print the saved and new generated vignettes of harms
-        print('\nSaved generated vignettes of harms:')
-        for i, vignette_of_harm in enumerate(checkpoint_data['vignettes_of_harms'][chosen_stakeholder], start=1):
-            print(f"{i}. {vignette_of_harm}")
-        print()
-
-        print('\nNew generated vignettes of harms:')
-        for i, vignette_of_harm in enumerate(vignettes_of_harms, start=1):
-            print(f"{i}. {vignette_of_harm}")
-        print()
-
-        # Ask the user if they want to use the new generated vignettes of harms
-        if ask_confirmation.closed('Do you want to overwrite the saved vignettes of harms with the newly generated vignettes of harms (y/n)?'):
-            checkpoint_data['vignettes_of_harms'][chosen_stakeholder] = vignettes_of_harms
-            print("Successfully updated the vignettes of harms.")
-        else:
-            print("Keeping the original generated vignettes of harms.")
 
         # Save the modified vignettes
         dm.save_data("vignettes", checkpoint_data)
