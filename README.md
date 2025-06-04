@@ -42,6 +42,17 @@ pip install -r requirements.txt
 mkdir reports
 ```
 
+**Store the ECHR treaty text as ECHR.pdf:**
+```
+can e.g be found at https://www.echr.coe.int/documents/d/echr/Convention_ENG
+```
+
+**Add the ecthr_cases dataset (https://archive.org/details/ECtHR-NAACL2021/) used by the RAG to the current directory:**
+```
+git lfs install
+git clone https://huggingface.co/datasets/AUEB-NLP/ecthr_cases
+```
+
 **Optional: create an environmental variable for your LiteLLM API key**
 ```
 export OPENAI_API_KEY=[your API key]
