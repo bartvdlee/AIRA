@@ -5,16 +5,12 @@ from LLM import full_AFRIA, init_llm, get_available_models
 import ask_confirmation
 
 
-
-
 print('Welcome to the Automated Impact on Rights Assessment (AIRA) tool')
 print('Do you want to create a new report or modify an existing one?')
 print('1. Create a new report')
 print('2. Modify an existing report')
 print('3. Resume an interrupted report generation')
 print('4. Exit\n')
-
-# Usage of custom LLM will be implemented at a later stage
 
 choice = '0'
 while choice not in range(1, 5):
