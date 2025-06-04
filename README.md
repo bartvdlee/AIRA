@@ -37,6 +37,16 @@ source AIRA-venv/bin/activate
 pip install -r requirements.txt
 ```
 
+**Create a directory for storing the reports:**
+```
+mkdir reports
+```
+
+**Optional: create an environmental variable for your LiteLLM API key**
+```
+export OPENAI_API_KEY=[your API key]
+```
+
 **The program can be started by running:**
 ```
 python run.py
