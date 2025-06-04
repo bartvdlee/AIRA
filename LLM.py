@@ -44,9 +44,11 @@ from langgraph.graph.state import CompiledStateGraph
 from langchain_community.document_loaders import PyPDFLoader
 from tenacity import retry, wait_random_exponential
 import asyncio
+from langchain_core.output_parsers import PydanticOutputParser
+from pydantic import BaseModel, Field
 
 # Local imports
-from LLM_functions import improve_scenario, generate_stakeholders, generate_vignettes, generate_harm, generate_human_rights_impact, generate_mitigation, generate_severity, generate_likelihood
+from LLM_functions import improve_scenario, generate_stakeholders, generate_vignettes, generate_harm, generate_human_rights_impact, generate_mitigation, generate_severity, generate_likelihood, generate_irreversibility
 import ask_confirmation
 from data_store import DataManager
 
@@ -70,7 +72,7 @@ def get_available_models() -> str:
 
     url = "http://localhost:4000/v1/models"
     headers = {
-        "Authorization": f"Bearer {os.environ["OPENAI_API_KEY"]}"
+        "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}"
     }
 
     # Discover all the available models
@@ -361,7 +363,7 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
         index = faiss.IndexFlatL2(len(embeddings.embed_query("hello world")))
         vector_store = FAISS(embedding_function=embeddings, index=index, docstore=InMemoryDocstore(), index_to_docstore_id={})
 
-        # Add the documents to the vector store in batches to avoid payload size limits, use async and retry
+        # Add the documents to the vector store in batches to avoid size and rate limits, use async and retry
         asyncio.run(add_documents(vector_store, documents))
 
         # Save the vector store to disk
@@ -369,17 +371,30 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
     else:
         print("Using existing vector store.")
 
-    # Define the system prompt for the LLM
-    system_prompt = """
-    You are an expert in human rights law and the European Convention on Human Rights (ECHR).
-    Use the following pieces of retrieved context to answer the question.
-    The context is about the ECHR and its articles, as well as the case law of the ECHR.
-    Question: {question}
-    Context: {context}
-    Answer:    
-    """
+    # Creates the Graph for the RAG system
+    # It mimics the Graph from the generate_human_rights_impact.py file as closely as possible
 
-    prompt = ChatPromptTemplate.from_template(system_prompt)
+    # To be able to mimic the Graph from the generate_human_rights_impact.py file, we need to define the HumanRightGeneration class for format instructions
+    class HumanRightGeneration(BaseModel):
+        """Generation of lists of affected human rights and argumentations."""
+
+        human_rights: list[str] = Field(description="List of human rights (as defined by the European Convention on Human Rights) affected by the AI system for the stakeholder")
+        argumentations: list[str] = Field(description="List of argumentations for each human right affected by the AI system for the stakeholder. The argumentation should explain why the human right is affected by the AI system and how it is violated, cite sources used.")
+    
+    # Define the output parser for the human rights generation
+    parser = PydanticOutputParser(pydantic_object=HumanRightGeneration)
+
+    # Now we define the prompt (where we added one line for RAG) and use the format instructions from the parser
+    prompt = ChatPromptTemplate.from_messages( # type: ignore
+    [
+        ("system", "You are an expert in AI ethics and you are asked to evaluate the human rights affected by certain harms."
+                   "Please identify the human rights (as defined by the European Convention on Human Rights) affected by the given harm for the specified stakeholder."
+                   "For each right, provide an argumentation explaining why it is affected."
+                   "Use the provided context (ECHR text and relevant case law) to answer the question:\n\n{context}\n\n" # Added this line for RAG
+                   "Wrap the output in `json` tags\n{format_instructions}"
+                   "Your response must be valid JSON"),
+        ("human", "{question}"),
+    ]).partial(format_instructions=parser.get_format_instructions())
 
     # Define state for application
     class State(TypedDict):
@@ -443,7 +458,7 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
                 # If no case number, treat as ECHR document
                 echr_docs.append(doc) # type: ignore
 
-        structured_context = []
+        structured_context: list[str] = []
 
         # Add ECHR treaty text first if available
         if echr_docs:
@@ -454,7 +469,7 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
         if cases:
             structured_context.append("\nRelevant ECHR case law:") # type: ignore
             for case_no, case_data in cases.items(): # type: ignore
-                structured_context.append(f"\nCase {case_no} - Verdict: {case_data['verdict']}") # type: ignore
+                structured_context.append(f"\nCase {case_no} - Verdict: {case_data.get('verdict', 'No articles violated')}") # type: ignore
 
                 if case_data['referenced_facts']:
                     structured_context.append("Key facts (referenced in judgment):") # type: ignore
@@ -469,8 +484,8 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
             # Add spacing between cases
             structured_context.append("\n") # type: ignore
 
-        docs_content = "\n".join(structured_context) # type: ignore
-        messages = prompt.invoke({"question": state["question"], "context": docs_content}) # type: ignore
+        # docs_content = "\n".join([str(doc) for doc in structured_context])
+        messages = prompt.invoke({"question": state["question"], "context": structured_context}) # type: ignore
         response = llm.invoke(messages)
         return {"answer": response.content} # type: ignore
 
@@ -503,7 +518,8 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
     5. Human Rights Impact
     6. Mitigation Measures
     7. Severity
-    8. Likelihood and Confidence
+    8. Likelihood
+    9. Irreversibility
 
     The function generates the data for each stage using the LLM and saves it in a CSV file.
     The CSV file is saved in the reports folder with the name of the report.
@@ -514,10 +530,14 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
     - Vignette: The vignette of the stakeholder
     - Harm: The harm of the stakeholder
     - Human Rights Impact: The human rights impact of the stakeholder
+    - Human Rights Argumentation: The human rights argumentation of the stakeholder
     - Mitigation Measures: The mitigation measures of the stakeholder
     - Severity Level: The severity level of the stakeholder
+    - Severity Justification: The severity justification of the stakeholder
     - Likelihood Level: The likelihood level of the stakeholder
-    - Likelihood Confidence Level: The likelihood confidence level of the stakeholder
+    - Likelihood Justification: The likelihood justification of the stakeholder
+    - Irreversibility Level: The irreversibility level of the stakeholder
+    - Irreversibility Justification: The irreversibility justification of the stakeholder
 
     Args:
         report_name (str): The name of the report to run.
@@ -564,7 +584,8 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
         "human_rights", 
         "mitigations",
         "severity",
-        "likelihood_confidence",
+        "likelihood",
+        "irreversibility"
     ]
 
     # Determine where to start
@@ -673,16 +694,27 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
         print('Generating human rights impacts for the harms...')
 
         human_rights: dict[str, list[list[str]]] = {}
+        argumentations: dict[str, list[list[str]]] = {}
         for stakeholder in all_stakeholders:
-            human_rights[stakeholder] = generate_human_rights_impact.generate(harms[stakeholder], stakeholder, llm)
+            data = generate_human_rights_impact.generate(harms[stakeholder], stakeholder, llm)
+
+            human_rights[stakeholder] = data["human_rights"]
+            argumentations[stakeholder] = data["argumentations"]
 
         # Save the data using the DataManager
-        dm.save_data("human_rights", human_rights)
+        dm.save_data("human_rights", {
+            "human_rights": human_rights,
+            "argumentations": argumentations
+        })
         
         print('Successfully generated human rights impact for the harms.')
     else:
         # Load from checkpoint
-        human_rights = dm.load_data("human_rights")
+        checkpoint_data = dm.load_data("human_rights")
+
+        human_rights = checkpoint_data["human_rights"]
+        argumentations = checkpoint_data["argumentations"]
+
         print('Successfully loaded human rights impact from checkpoint.')
 
 
@@ -711,48 +743,90 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
         print('Generating severity levels for the harms...')
 
         severity_levels: dict[str, list[list[str]]] = {}
+        severity_justifications: dict[str, list[list[str]]] = {}
+
         for stakeholder in all_stakeholders:
-            severity_levels[stakeholder] = generate_severity.generate(harms[stakeholder], human_rights[stakeholder], llm)
+            data = generate_severity.generate(harms[stakeholder], human_rights[stakeholder], llm)
+
+            severity_levels[stakeholder] = data["severity_levels"]
+            severity_justifications[stakeholder] = data["justifications"]
 
         # Save the data using the DataManager
-        dm.save_data("severity", severity_levels)
+        dm.save_data("severity", {
+            "severity_levels": severity_levels,
+            "justifications": severity_justifications
+        })
 
         print('Successfully generated severity levels.')
     else:
         # Load from checkpoint
-        severity_levels = dm.load_data("severity")
+        checkpoint_data = dm.load_data("severity")
+
+        severity_levels = checkpoint_data["severity_levels"]
+        severity_justifications = checkpoint_data["justifications"]
+
         print('Successfully loaded severity levels from checkpoint.')
 
 
-    # LIKELIHOOD AND CONFIDENCE GENERATION
+    # LIKELIHOOD GENERATION
     if start_stage_idx < 7:
         # Generate likelihood and confidence levels using the LLM
         print('Generating likelihood and confidence levels for the harms...')
 
         likelihood_levels: dict[str, list[list[str]]] = {}
-        confidence_levels: dict[str, list[list[str]]] = {}
+        likelihood_justifications: dict[str, list[list[str]]] = {}
         for stakeholder in all_stakeholders:
-            likelihood_confidence_dict = generate_likelihood.generate(harms[stakeholder], human_rights[stakeholder], llm)
+            data = generate_likelihood.generate(harms[stakeholder], human_rights[stakeholder], llm)
 
-            likelihood_levels[stakeholder] = likelihood_confidence_dict["likelihood"]
-            confidence_levels[stakeholder] = likelihood_confidence_dict["confidence"]
+            likelihood_levels[stakeholder] = data["likelihood_levels"]
+            likelihood_justifications[stakeholder] = data["justifications"]
 
         # Save the data using the DataManager
-        dm.save_data("likelihood_confidence", {
+        dm.save_data("likelihood", {
             "likelihood_levels": likelihood_levels,
-            "confidence_levels": confidence_levels
+            "likelihood_justifications": likelihood_justifications
         })
 
         print('Successfully generated likelihood and confidence levels.')
     else:
         # Load from checkpoint
-        likelihood_confidence_data = dm.load_data("likelihood_confidence")
-        likelihood_levels = likelihood_confidence_data["likelihood_levels"]
-        confidence_levels = likelihood_confidence_data["confidence_levels"]
+        data = dm.load_data("likelihood")
+        likelihood_levels = data["likelihood_levels"]
+        likelihood_justifications = data["likelihood_justifications"]
+
         print('Successfully loaded likelihood and confidence levels from checkpoint.')
 
 
-    # Next step: save it in a tidy dataframe!
+    # IRREVERSIBILITY GENERATION
+    if start_stage_idx < 8:
+        # Generate irreversibility levels using the LLM
+        print('Generating irreversibility levels for the harms...')
+
+        irreversibility_levels: dict[str, list[list[str]]] = {}
+        irreversibility_justifications: dict[str, list[list[str]]] = {}
+
+        for stakeholder in all_stakeholders:
+            data = generate_irreversibility.generate(harms[stakeholder], human_rights[stakeholder], llm)
+
+            irreversibility_levels[stakeholder] = data["irreversibility_levels"]
+            irreversibility_justifications[stakeholder] = data["justifications"]
+
+        # Save the data using the DataManager
+        dm.save_data("irreversibility", {
+            "irreversibility_levels": irreversibility_levels,
+            "irreversibility_justifications": irreversibility_justifications
+        })
+
+        print('Successfully generated irreversibility levels.')
+    else:
+        # Load from checkpoint
+        data = dm.load_data("irreversibility")
+        irreversibility_levels = data["irreversibility_levels"]
+        irreversibility_justifications = data["irreversibility_justifications"]
+
+        print('Successfully loaded irreversibility levels from checkpoint.')
+
+    # Next step: save it in a dataframe
     # First we create the multi-index of the dataframe
 
     # Create a list with the categories (direct/indirect) of all the stakeholders
@@ -789,32 +863,46 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
         for j, behavior in enumerate(problematic_behaviours_short):
             # Ensure all lists for a given stakeholder/behavior have the same length
             max_length = max(len(human_rights[stakeholder][j]), 
+                            len(argumentations[stakeholder][j]),
                             len(mitigation_measures[stakeholder][j]),
                             len(severity_levels[stakeholder][j]),
+                            len(severity_justifications[stakeholder][j]),
                             len(likelihood_levels[stakeholder][j]),
-                            len(confidence_levels[stakeholder][j]))
+                            len(likelihood_justifications[stakeholder][j]),
+                            len(irreversibility_levels[stakeholder][j]),
+                            len(irreversibility_justifications[stakeholder][j]))
+
 
             # Then pad shorter lists with None or empty strings
             padded_human_rights = human_rights[stakeholder][j] + [None] * (max_length - len(human_rights[stakeholder][j]))
+            padded_human_right_argumentations = argumentations[stakeholder][j] + [None] * (max_length - len(argumentations[stakeholder][j]))
             padded_mitigation = mitigation_measures[stakeholder][j] + [None] * (max_length - len(mitigation_measures[stakeholder][j]))
             padded_severity = severity_levels[stakeholder][j] + [None] * (max_length - len(severity_levels[stakeholder][j]))
+            padded_severity_justifications = severity_justifications[stakeholder][j] + [None] * (max_length - len(severity_justifications[stakeholder][j]))
             padded_likelihood = likelihood_levels[stakeholder][j] + [None] * (max_length - len(likelihood_levels[stakeholder][j]))
-            padded_confidence = confidence_levels[stakeholder][j] + [None] * (max_length - len(confidence_levels[stakeholder][j]))
+            padded_likelihood_justifications = likelihood_justifications[stakeholder][j] + [None] * (max_length - len(likelihood_justifications[stakeholder][j]))
+            padded_irreversibility = irreversibility_levels[stakeholder][j] + [None] * (max_length - len(irreversibility_levels[stakeholder][j]))
+            padded_irreversibility_justifications = irreversibility_justifications[stakeholder][j] + [None] * (max_length - len(irreversibility_justifications[stakeholder][j]))
+
 
             rows.append({
                 'Vignette': vignettes[stakeholder][j],
                 'Harm': harms[stakeholder][j],
                 'Human rights impact': padded_human_rights,
+                'Human rights argumentation': padded_human_right_argumentations,
                 'Mitigation measures': padded_mitigation,
                 'Severity level': padded_severity,
+                'Severity justification': padded_severity_justifications,
                 'Likelihood level': padded_likelihood,
-                'Likelihood confidence level': padded_confidence
+                'Likelihood justification': padded_likelihood_justifications,
+                'Irreversibility level': padded_irreversibility,
+                'Irreversibility justification': padded_irreversibility_justifications,
             })
 
     df = pd.DataFrame.from_records(rows, index=index) # type: ignore
 
     # Explode the DataFrame to split the human rights and subsequent columns into individual rows
-    df = df.explode(['Human rights impact', 'Mitigation measures', 'Severity level', 'Likelihood level', 'Likelihood confidence level'])
+    df = df.explode(['Human rights impact', 'Human rights argumentation', 'Mitigation measures', 'Severity level', 'Severity justification', 'Likelihood level', 'Likelihood justification', 'Irreversibility level', 'Irreversibility justification']) # type: ignore
     df = df.dropna(subset=['Human rights impact'], axis=0) # type: ignore
    
     print('Successfully generated the report data.')

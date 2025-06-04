@@ -1,8 +1,6 @@
 import os
 import pandas as pd
 from ast import literal_eval
-from tenacity import retry, wait_random_exponential
-from langgraph.graph.state import CompiledStateGraph
 
 # local imports
 import ask_confirmation
@@ -296,21 +294,19 @@ def modify(report_name: str) -> None:
         # Setup RAG
         RAG = setup_RAG(llm)
 
-        # retry to get around rate limits
-        @retry(wait=wait_random_exponential(multiplier=1, max=60))
-        def _gen_with_retry(harms: list[str], stakeholder: str, llm: CompiledStateGraph, dm: DataManager | None = None) -> list[list[str]]:
-            """
-            Retry function to get around rate limits.
-            """
-            return generate_human_rights_impact.generate(harms, stakeholder, llm, dm)
-
-        # Generate the human rights impacts using RAG
         human_rights: dict[str, list[list[str]]] = {}
+        argumentations: dict[str, list[list[str]]] = {}
         for stakeholder in all_saved_stakeholders:
-            human_rights[stakeholder] = _gen_with_retry(saved_harms[stakeholder], stakeholder, RAG, dm_context)
+            data = generate_human_rights_impact.generate(saved_harms[stakeholder], stakeholder, RAG, dm_context)
+
+            human_rights[stakeholder] = data["human_rights"]
+            argumentations[stakeholder] = data["argumentations"]
 
         # Save the data using the DataManager
-        dm.save_data("human_rights", human_rights)
+        dm.save_data("human_rights", {
+            "human_rights": human_rights,
+            "argumentations": argumentations
+        })
         
         print('Successfully generated human rights impact for the harms using RAG.')
 

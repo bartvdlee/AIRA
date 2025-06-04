@@ -72,7 +72,7 @@ def generate(stakeholder: str, harms: list[str], human_rights: list[list[str]], 
         mitigations_for_current_harm: list[str] = list()
 
         for human_right in human_rights_list:
-            current_message = HumanMessage(content=f"""What mitigation measures can be taken to prevent the following harm: {harm} 
+            current_message = HumanMessage(content=f"""What possible mitigation measure can be taken to prevent or reduce the impact of the following harm: {harm} 
                                                     for the stakeholder '{stakeholder}' in the context of the following (ECHR) human right: {human_right}.
                                                     Respond in at most a couple of sentences""")
             

@@ -78,7 +78,8 @@ def generate(scenario: str, stakeholder: str, problematic_behaviours: list[str],
 
     for problematic_behaviour in problematic_behaviours:
         current_message = HumanMessage(content=f"Narrate how stakeholder '{stakeholder}' in the scenario '{scenario}' may experience {problematic_behaviour}. \
-                                                    Formulate your answer in second-person perspective: 'Imagine you are a [stakeholder], you may experience [harm] because...'")
+                                                    Formulate your answer in second-person perspective: 'Imagine you are a [stakeholder], you may experience [harm] because...' \
+                                                    Use a few sentences at most and answer in a single paragraph.")
     
         # Invoke the model with the message
         response = app.invoke(
