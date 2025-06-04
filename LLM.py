@@ -676,7 +676,7 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
 
         harms: dict[str, list[str]] = {}
         for stakeholder in all_stakeholders:
-            harms[stakeholder] = generate_harm.generate(vignettes[stakeholder], stakeholder, llm)
+            harms[stakeholder] = generate_harm.generate(scenario, vignettes[stakeholder], stakeholder, llm)
         
         # Save the data using the DataManager
         dm.save_data("harms", harms)

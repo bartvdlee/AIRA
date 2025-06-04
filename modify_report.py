@@ -246,6 +246,9 @@ def modify(report_name: str) -> None:
     elif choice == 8:
         # Modify generated harms
 
+        # Read the report info
+        scenario = str(info.loc['scenario'].iloc[0]) # type: ignore
+
         # Read the saved vignettes
         saved_vignettes: dict[str, list[str]] = dm.load_data("vignettes")['vignettes']
         
@@ -256,7 +259,7 @@ def modify(report_name: str) -> None:
         checkpoint_data = dm.load_data("harms")
 
         # Generate the harms
-        harms: list[str] = generate_harm.generate(saved_vignettes[chosen_stakeholder], chosen_stakeholder, llm)
+        harms: list[str] = generate_harm.generate(scenario, saved_vignettes[chosen_stakeholder], chosen_stakeholder, llm)
 
         # Print the saved and new generated harms        
         print(f'\nSaved generated harms for stakeholder \'{chosen_stakeholder}\':')
