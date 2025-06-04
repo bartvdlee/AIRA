@@ -122,11 +122,10 @@ def modify(report_name: str) -> None:
     print('10. Modify generated mitigation measures')
     print('11. Modify generated severity levels')
     print('12. Modify generated likelihood levels')
-    print('13. Modify generated likelihood confidence levels')
     print()
 
     choice = 0
-    while choice not in range(1, 14):
+    while choice not in range(1, 13):
         choice = input('Enter your choice: ')
         if choice.isdigit():
             choice = int(choice)
@@ -320,8 +319,6 @@ def modify(report_name: str) -> None:
     #     modify_generated_severity_levels(report_name)
     # elif choice == 12:
     #     modify_generated_likelihood_levels(report_name)
-    # elif choice == 13:
-    #     modify_generated_likelihood_confidence_levels(report_name)
 
 
 def modify_report_info(report_name: str, column_name: str, expect_list: bool = False) -> None:

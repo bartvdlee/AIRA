@@ -14,8 +14,10 @@ The AFRIA pipeline consists of 8 stages:
 4. Harm analysis
 5. Human rights impact assessment
 6. Mitigation measures
-7. Severity assessment
-8. Likelihood and confidence evaluation
+7. Severity assessment and justification
+8. Likelihood and justification evaluation
+9. Irreversibility assessment and justification
+10. Final report generation
 The module supports resuming assessments from checkpoints and generates structured
 output in CSV format containing all analysis results.
 Example usage:
@@ -770,8 +772,8 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
 
     # LIKELIHOOD GENERATION
     if start_stage_idx < 7:
-        # Generate likelihood and confidence levels using the LLM
-        print('Generating likelihood and confidence levels for the harms...')
+        # Generate likelihood and justification using the LLM
+        print('Generating likelihood levels and justifications for the harms...')
 
         likelihood_levels: dict[str, list[list[str]]] = {}
         likelihood_justifications: dict[str, list[list[str]]] = {}
@@ -787,14 +789,14 @@ def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool =
             "likelihood_justifications": likelihood_justifications
         })
 
-        print('Successfully generated likelihood and confidence levels.')
+        print('Successfully generated likelihood levels and justifications.')
     else:
         # Load from checkpoint
         data = dm.load_data("likelihood")
         likelihood_levels = data["likelihood_levels"]
         likelihood_justifications = data["likelihood_justifications"]
 
-        print('Successfully loaded likelihood and confidence levels from checkpoint.')
+        print('Successfully loaded likelihood levels and justifications from checkpoint.')
 
 
     # IRREVERSIBILITY GENERATION
