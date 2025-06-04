@@ -83,7 +83,7 @@ def generate(scenario: str, vignettes: list[str], stakeholder: str, llm: BaseCha
     harms: list[str] = list()
 
     for vignette in vignettes:
-        current_message = HumanMessage(content=f"Summarize the vignette {vignette} and specify the harm the stakeholder {stakeholder} faces due to the problematic AI behavior.")
+        current_message = HumanMessage(content=f"Summarize the vignette '{vignette}' and specify the harm the stakeholder '{stakeholder}' faces due to the problematic AI behavior.")
     
         # Invoke the model with the message
         response = app.invoke(
