@@ -6,7 +6,13 @@ The tool assumes you have a LiteLLM instance running on `http://localhost:4000` 
 For setting up LiteLLM, please see: https://github.com/BerriAI/litellm
 
 ## Features
-todo
+- Can use any LLM (local or through API) via LiteLLM
+- Can generate potential human right impact with RAG
+- Gives justifications for the generations
+- Creation and local storage of (FAISS) vector store (**Important: never use an untrusted vector store as they can contain virusses**)
+- Stores the context that was used when using RAG
+- Ability to store multiple reports
+- Can be resumed after an interrupted generation
 
 ## Installation (Ubuntu 24.04)
 Installation steps assume Python (3.12) and Git is installed on the system.
@@ -40,6 +46,17 @@ pip install -r requirements.txt
 **Create a directory for storing the reports:**
 ```
 mkdir reports
+```
+
+**Store the ECHR treaty text as ECHR.pdf:**
+```
+can e.g be found at https://www.echr.coe.int/documents/d/echr/Convention_ENG
+```
+
+**Add the ecthr_cases dataset (https://archive.org/details/ECtHR-NAACL2021/) used by the RAG to the current directory:**
+```
+git lfs install
+git clone https://huggingface.co/datasets/AUEB-NLP/ecthr_cases
 ```
 
 **Optional: create an environmental variable for your LiteLLM API key**
