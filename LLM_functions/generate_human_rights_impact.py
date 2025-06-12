@@ -138,7 +138,7 @@ def generate(harms: list[str], stakeholder: str, llm: BaseChatModel | CompiledSt
         
         # Save the context to a json file
         if isinstance(dm, DataManager):
-            dm.save_data(f"human_rights_context_{stakeholder}".replace(' ', '_'), answer_context)
+            dm.save_data(f"human_rights_context_{stakeholder.replace("/", "_or_")}".replace(' ', '_'), answer_context)
         else:
             print("DataManager instance not provided. Context not saved.")
     
