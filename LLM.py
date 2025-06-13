@@ -115,7 +115,7 @@ def get_available_models() -> str:
 
 
 
-def init_llm(model_name: str = 'mistral/mistral-small-latest') -> BaseChatModel:
+def init_llm(model_name: str = 'mistral/mistral-small-latest', use_responses_api: bool = False) -> BaseChatModel:
     """
     Initializes the LLM specified by `model_name`. It uses liteLLM as backend.
     The function checks if the API key is already set in the environment variables.
@@ -126,7 +126,10 @@ def init_llm(model_name: str = 'mistral/mistral-small-latest') -> BaseChatModel:
         os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter API key for LiteLLM: ")
     
     # Initialize the LLM with the specified model name
-    llm = init_chat_model(model_name, model_provider="openai", base_url='http://localhost:4000')
+    if not use_responses_api:
+        llm = init_chat_model(model_name, model_provider="openai", base_url='http://localhost:4000')
+    else:
+        llm = init_chat_model(model_name, model_provider="openai", base_url='http://localhost:4000', use_responses_api=True)
     
     return llm
 
