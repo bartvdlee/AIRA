@@ -5,6 +5,8 @@ AIRA is a tool to (partially) automate a Fundamental Rights Impact Assessment (F
 The tool assumes you have a LiteLLM instance running on `http://localhost:4000` and have at least one LLM configured on LiteLLM.
 For setting up LiteLLM, please see: https://github.com/BerriAI/litellm
 
+Important: AIRA can only be used with LLMs that support structured output and JSON mode
+
 ## Features
 - Can use any LLM (local or through API) via LiteLLM
 - Can generate potential human right impact with RAG
