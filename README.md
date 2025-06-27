@@ -6,6 +6,7 @@ The tool assumes you have a LiteLLM instance running on `http://localhost:4000` 
 For setting up LiteLLM, please see: https://github.com/BerriAI/litellm
 
 Important: AIRA can only be used with LLMs that support structured output and JSON mode
+
 The code used for the results (analysis of the outputs) can be found in the analysis-tools branch.
 
 ## Features
