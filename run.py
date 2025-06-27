@@ -1,7 +1,7 @@
 import sys
 from create_new_report import new_report
 from modify_report import choose_report_to_modify, modify
-from LLM import full_AFRIA, init_llm, get_available_models
+from LLM import full_AIRA, init_llm, get_available_models
 import ask_confirmation
 
 
@@ -28,8 +28,8 @@ if choice == 1:
     # Call the function to create a new report
     report_name = new_report()
 
-    # Asks the user whether to run the full AFRIA process
-    if ask_confirmation.closed('Do you want to run the full AFRIA process on this report (y/n)?'):
+    # Asks the user whether to run the full AIRA process
+    if ask_confirmation.closed('Do you want to run the full AIRA process on this report (y/n)?'):
         # Asks the user whether it wants to use a custom LLM
         if ask_confirmation.closed('Do you want to use a custom LLM (default: Mistral Small) (y/n)?'):
             llm = init_llm(get_available_models())
@@ -38,7 +38,7 @@ if choice == 1:
             print('Using the default LLM.', end='\n\n')
             llm = init_llm()
 
-        full_AFRIA(report_name, llm, resume=False)
+        full_AIRA(report_name, llm, resume=False)
     else:
         print('Exiting the program.')
         sys.exit(0)
@@ -67,7 +67,7 @@ elif choice == 3:
         llm = init_llm()
 
     # Calls the function to modify the report
-    full_AFRIA(report_name, llm, resume=True)
+    full_AIRA(report_name, llm, resume=True)
 
 elif choice == 4:
     print('\nExiting the program.')

@@ -4,7 +4,7 @@ from ast import literal_eval
 
 # local imports
 import ask_confirmation
-from LLM import full_AFRIA, init_llm, get_available_models, setup_RAG
+from LLM import full_AIRA, init_llm, get_available_models, setup_RAG
 from LLM_functions import improve_scenario, generate_stakeholders, generate_vignettes, generate_harm, generate_human_rights_impact
 from data_store import DataManager
 
@@ -113,7 +113,7 @@ def modify(report_name: str) -> None:
     print('3. Problematic behaviours')
     print()
     print('Report output (LLM functions):')
-    print('4. Run the full AFRIA process')
+    print('4. Run the full AIRA process')
     print('5. Improve the scenario')
     print('6. Modify generated stakeholders')
     print('7. Modify generated vignettes')
@@ -147,7 +147,7 @@ def modify(report_name: str) -> None:
     elif choice == 3:
         modify_report_info(report_name, 'problematic_behaviours', expect_list=True)
     elif choice == 4:
-        full_AFRIA(report_name, llm, resume=False)
+        full_AIRA(report_name, llm, resume=False)
 
     elif choice == 5:
         scenario = str(info.loc['scenario'].iloc[0]) # type: ignore

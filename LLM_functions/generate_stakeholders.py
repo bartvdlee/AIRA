@@ -6,7 +6,7 @@ scenario description and user-provided initial stakeholders.
 The module defines:
 - A Pydantic model for structured stakeholder generation output
 - A function to generate categorized stakeholder lists
-This is part of the AFRIA (Automated Fundamental Rights Impact Assessment) pipeline, helping
+This is part of the AIRA (Automated Impact on Rights Assessment) pipeline, helping
 to ensure thorough stakeholder identification for AI system impact analysis for the EU AI act.
 """
 

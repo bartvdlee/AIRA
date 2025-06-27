@@ -6,8 +6,8 @@ pipeline for generating comprehensive reports analyzing potential harms, human r
 impacts, and mitigation measures for AI deployment scenarios.
 Main components:
 - init_llm: Initialize the language model with API authentication
-- full_AFRIA: Execute the complete AFRIA pipeline with checkpointing capabilities
-The AFRIA pipeline consists of 8 stages:
+- full_AIRA: Execute the complete AIRA pipeline with checkpointing capabilities
+The AIRA pipeline consists of 8 stages:
 1. Scenario improvement
 2. Stakeholder identification
 3. Vignette generation
@@ -21,7 +21,7 @@ The AFRIA pipeline consists of 8 stages:
 The module supports resuming assessments from checkpoints and generates structured
 output in CSV format containing all analysis results.
 Example usage:
-    full_AFRIA("hiring_ai_report", llm, resume=True)
+    full_AIRA("hiring_ai_report", llm, resume=True)
 """
 
 import sys
@@ -252,8 +252,8 @@ async def add_documents(vector_store: FAISS, documents: list[Document], uuids: O
 
 def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
     """
-    Sets up the ECHR RAG (Retrieval-Augmented Generation) system.
-    This will load the ECHR data and feed it into the LLM.
+    Sets up the ECtHR RAG (Retrieval-Augmented Generation) system.
+    This will load the ECtHR data and feed it into the LLM.
     It also adds the ECHR text to the documents.
     The function returns a compiled state graph for the RAG system.
 
@@ -335,7 +335,7 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
         case_no = 0
         for item in ds['train']: # type: ignore
             """
-            Creates Document objects for every case in the ECHR dataset.
+            Creates Document objects for every case in the ECtHR dataset.
             Every fact in the case is a separate Document and contains metadata about the case.
             The metadata includes the case no (does not represent real-world no), verdict, and whether fact was referenced by judge in verdict.
             This way the labels and silver_rationales columns from the dataset are incorporated into the fact Documents.
@@ -500,12 +500,12 @@ def setup_RAG(llm: BaseChatModel) -> CompiledStateGraph:
     return graph_builder.compile() # type: ignore
 
 
-def full_AFRIA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool = True, start_from: Optional[str] = None) -> None:
+def full_AIRA(report_name: str, llm: BaseChatModel = init_llm(), resume: bool = True, start_from: Optional[str] = None) -> None:
     '''
-    CLI tool to run the full AFRIA process.
+    CLI tool to run the full AIRA process.
     The function does not return any value.
     It takes the report name, the LLM to use, a boolean to resume from the last checkpoint and an optional starting stage as input.
-    The function runs the full AFRIA process and saves the results in a CSV file.
+    The function runs the full AIRA process and saves the results in a CSV file.
 
     The `resume` parameter acts as a master switch for the entire checkpointing system.
     If `resume` is set to True, the function will check for existing checkpoints and load data from them.
